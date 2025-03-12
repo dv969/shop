@@ -34,7 +34,7 @@ class CategoryController extends Controller
     {
 
         $category = Category::create($request->validated()); // Создает новую категорию с данными из запроса, прошедшими валидацию.
-       // return response()->json($category, 201); // Возвращает созданную категорию с кодом 201.
+      
         return new CategoryResource($category); // Используем CategoryResource
     }
 
