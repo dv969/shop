@@ -2,76 +2,63 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Product;
 use App\Http\Requests\ProductStoreRequest;
 use App\Http\Requests\ProductUpdateRequest;
-use App\Http\Resources\ProductResource;
 use App\Http\Resources\ProductCollection;
+use App\Http\Resources\ProductResource;
+use App\Services\ProductService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index()
-    {
-        //return Product::with('category')->where('stock', '>', 0)->get();
+    protected $productService;
 
-        $products = Product::with('category')->where('stock', '>', 0)->get();
-        return new ProductCollection($products); // Используем ProductCollection
+    public function __construct(ProductService $productService)
+    {
+        $this->productService = $productService;
     }
 
-    public function store(ProductStoreRequest $request)
+    public function index(): JsonResponse
     {
-
-        $product = Product::create($request->validated());// Используем $request->validated() для получения валидированных данных
-        // return response()->json($product, 201);
-        return new ProductResource($product); // Используем ProductResource
+        $products = $this->productService->getAllProducts();
+        return (new ProductCollection($products))->response(); // Используем ProductCollection
     }
 
-    public function show($id)
+    public function store(ProductStoreRequest $request): JsonResponse
     {
-        $product = Product::with('category')->findOrFail($id);
-        return new ProductResource($product); // Используем ProductResource
-        
-        //return response()->json($product);
+        $product = $this->productService->createProduct($request->validated());
+        return (new ProductResource($product))->response()->setStatusCode(201);
     }
 
-    public function update(ProductUpdateRequest $request, $id)
+    public function show($id): JsonResponse
     {
-
-        $product = Product::findOrFail($id);
-        $product->update($request->validated()); // Используйте $request->validated() для получения валидированных данных
-        return new ProductResource($product); // Используем ProductResource
-        //return response()->json($product);
+        $product = $this->productService->getProductById($id);
+        return (new ProductResource($product))->response();
     }
 
-    public function destroy($id)
+    public function update(ProductUpdateRequest $request, $id): JsonResponse
     {
-        $product = Product::findOrFail($id);
-        $product->delete();
+        $product = $this->productService->updateProduct($id, $request->validated());
+        return (new ProductResource($product))->response();
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        $this->productService->deleteProduct($id);
         return response()->json(null, 204);
     }
 
-      // Метод для получения продуктов по категории
-      public function getProductsByCategory($categoryId)
-      {
-          $products = Product::where('category_id', $categoryId)->get();
-          return new ProductCollection($products); // Используем ProductCollection
+    public function getProductsByCategory($categoryId): JsonResponse
+    {
+        $products = $this->productService->getProductsByCategory($categoryId);
+        return (new ProductCollection($products))->response(); // Используем ProductCollection
+    }
 
-          //return response()->json($products);
-      }
-
-      // Метод для поиска продуктов
-    public function searchProducts(Request $request)
+    public function searchProducts(Request $request): JsonResponse
     {
         $query = $request->input('query');
-        $products = Product::where('name', 'LIKE', "%{$query}%")->get();
-        return new ProductCollection($products); // Используем ProductCollection
-
-       // return response()->json($products);
+        $products = $this->productService->searchProducts($query);
+        return (new ProductCollection($products))->response(); // Используем ProductCollection
     }
 }
-
-
-
-
-

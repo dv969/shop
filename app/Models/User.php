@@ -2,25 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Database\Eloquent\Model;
 
-class User extends Model //Authenticatable
+class User extends Model
 {
+    protected $fillable = ['name', 'email', 'password', 'role'];
 
     public function orders()
     {
         return $this->hasMany(Order::class);
     }
-    
-    
-        // Связь с корзиной
+
+    // Связь с корзиной
     public function ShoppingCarts()
     {
         return $this->hasMany(ShoppingCart::class);
     }
-    
+
 }
 
 
