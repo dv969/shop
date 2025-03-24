@@ -2,65 +2,56 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Category;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
-use App\Http\Resources\CategoryResource;
 use App\Http\Resources\CategoryCollection;
+use App\Http\Resources\CategoryResource;
+use App\Http\Resources\ProductCollection;
+use App\Services\CategoryService;
+use Illuminate\Http\JsonResponse;
 
 class CategoryController extends Controller
 {
-    public function index()
+    protected $categoryService;
+
+    public function __construct(CategoryService $categoryService)
     {
-        
-        //return Category::all(); // Возвращает все категории из базы данных.
-        $categories = Category::all();
-       
-        //return CategoryResource::collection($categories); // НЕ РАБОТАЕТ
-       //return response()->json($categories); // !!!!РАБОТАЕТ!!!!!
-        return new CategoryCollection($categories); // Используем CategoryCollection НЕ РАБОТАЕТ
+        $this->categoryService = $categoryService;
     }
 
-    public function show($id)
+    public function index(): JsonResponse
     {
-       // return Category::findOrFail($id); // Возвращает категорию по ID или 404, если не найдено.
-       $category = Category::findOrFail($id);
-        return new CategoryResource($category); // Используем CategoryResource
-
+        $categories = $this->categoryService->getAllCategories();
+        return (new CategoryCollection($categories))->response(); // Используем CategoryCollection
     }
 
-    public function store(StoreCategoryRequest  $request)
+    public function store(StoreCategoryRequest $request): JsonResponse
     {
-
-        $category = Category::create($request->validated()); // Создает новую категорию с данными из запроса, прошедшими валидацию.
-      
-        return new CategoryResource($category); // Используем CategoryResource
+        $category = $this->categoryService->createCategory($request->validated());
+        return (new CategoryResource($category))->response()->setStatusCode(201);
     }
 
-    public function update(UpdateCategoryRequest  $request, $id)
+    public function show($id): JsonResponse
     {
-        $category = Category::findOrFail($id);
-
-
-        $category->update($request->only(['name', 'slug'])); // Обновляет данные категории.
-        return new CategoryResource($category); // Используем CategoryResource
-       // return response()->json($category, 200); // Возвращает обновленную категорию.
+        $category = $this->categoryService->getCategoryById($id);
+        return (new CategoryResource($category))->response();
     }
 
-    public function destroy($id)
+    public function update(UpdateCategoryRequest $request, $id): JsonResponse
     {
-        $category = Category::findOrFail($id);
-        $category->delete(); // Удаляет категорию.
-        return response()->json(null, 204); // Возвращает статус 204 No Content.
+        $category = $this->categoryService->updateCategory($id, $request->validated());
+        return (new CategoryResource($category))->response()->setStatusCode(200);
     }
 
-        // Метод для получения продуктов по категории
-    public function getCategoryProducts($id)
+    public function destroy($id): JsonResponse
     {
-        $category = Category::findOrFail($id);
-        $products = $category->products; // Предполагается, что у категории есть связь с продуктами
-        return new CategoryResource($category); // Используем CategoryResource
-      //  return response()->json($products);
+        $this->categoryService->deleteCategory($id);
+        return response()->json(null, 204);
+    }
+
+    public function getCategoryProducts($id): JsonResponse
+    {
+        $products = $this->categoryService->getCategoryProducts($id);
+        return (new ProductCollection($products))->response(); // Используем ProductCollection
     }
 }

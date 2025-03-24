@@ -2,76 +2,56 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Http\Requests\UserRequest;
 use App\Http\Requests\UserUpdateRequest;
-use App\Http\Middleware\RoleMiddleware;
-use App\Http\Resources\UserResource;
+use App\Http\Resources\OrderResource;
 use App\Http\Resources\UserCollection;
-
-
-
+use App\Http\Resources\UserResource;
+use App\Services\UserService;
+use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
 {
-    public function index()
+    protected $userService;
+
+    public function __construct(UserService $userService)
     {
-        $users = User::all(); // Возвращает всех пользователей из базы данных.
-        return new UserCollection($users); // Используем UserCollection
+        $this->userService = $userService;
     }
 
-    public function store(UserRequest $request)
+    public function index(): JsonResponse
     {
-        
-        $user = new User();
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->password = bcrypt($request->password); // Хеширует пароль перед сохранением.
-        $user->role = $request->role; // СТАЛО ЭТО Устанавлвает роль пользователя из запроса
-        // $user->role = 'customer'; //     БЫЛО ЭТО Устанавливает роль пользователя.
-        $user->save(); // Сохраняет пользователя в базе данных.
-
-
-        return new UserResource($user); // !!СТАЛО!!
-
-        //!!БЫЛО!! return response()->json($user, 201); // Возвращает созданного пользователя с кодом 201.
+        $users = $this->userService->getAllUsers();
+        return (new UserCollection($users))->response(); // Используем UserCollection
     }
 
-    public function update(UserUpdateRequest $request, $id)
+    public function store(UserRequest $request): JsonResponse
     {
-        $user = User::findOrFail($id);
-
-        $user->update($request->only(['name', 'email', 'password'])); // Обновляет данные пользователя.
-        return new UserResource($user); // Используем UserResource
-
-       // return response()->json($user, 200); // Возвращает обновленного пользователя.
+        $user = $this->userService->createUser($request->validated());
+        return (new UserResource($user))->response()->setStatusCode(201);
     }
 
-    public function destroy($id)
+    public function update(UserUpdateRequest $request, $id): JsonResponse
     {
-        $user = User::findOrFail($id);
-        $user->delete(); // Удаляет пользователя.
-        return response()->json(null, 204); // Возвращает статус 204 No Content.
+        $user = $this->userService->updateUser($id, $request->validated());
+        return (new UserResource($user))->response()->setStatusCode(200);
     }
 
-    public function show($id)
+    public function destroy($id): JsonResponse
     {
-      $user = User::with('orders')->findOrFail($id); // Загружает пользователя и его заказы
-      
-      return new UserResource($user); // Используем UserResource
-      //return response()->json($user); // Возвращает пользователя с его заказами
+        $this->userService->deleteUser($id);
+        return response()->json(null, 204);
     }
 
-        // Метод для получения заказов пользователя
-    public function getUserOrders($id)
+    public function show($id): JsonResponse
     {
-        $user = User::findOrFail($id);
-        $orders = $user->orders; // Предполагается, что у пользователя есть связь с заказами
-        
-        return new UserResource($user); // Используем UserResource
-        //return response()->json($orders);
+        $user = $this->userService->getUserWithOrders($id);
+        return (new UserResource($user))->response();
     }
 
+    public function getUserOrders($id): JsonResponse
+    {
+        $orders = $this->userService->getUserOrders($id);
+        return OrderResource::collection($orders)->response();
+    }
 }
-
